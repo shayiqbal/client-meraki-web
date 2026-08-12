@@ -449,10 +449,11 @@ function app() {
     },
 
     cellDetail(cell) {
-      // Only show detail for actionable statuses
       if (!cell) return '';
       if (cell.status === 'match') return '';
       if (cell.status === 'missing') return 'Missing';
+      if (cell.status === 'different') return cell.detail || 'Extra';
+      if (cell.status === 'na') return '';
       return cell.detail || '';
     },
 

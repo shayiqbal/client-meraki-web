@@ -552,16 +552,30 @@
               <table class="table table-bordered table-sm mb-0" style="min-width:600px">
                 <thead>
                   <tr>
-                    <th style="min-width:220px">Rule / Setting</th>
+                    <th style="min-width:260px">Rule / Setting</th>
+                    <!-- Source network column -->
+                    <th class="text-center" style="background:#e0f2fe;min-width:130px">
+                      <span x-text="cmpReport.source_network.name"></span>
+                      <span class="badge bg-primary ms-1" style="font-size:.65rem">SOURCE</span>
+                    </th>
                     <template x-for="t in cmpReport.target_networks" :key="t.id">
-                      <th x-text="t.name"></th>
+                      <th class="text-center" x-text="t.name"></th>
                     </template>
                   </tr>
                 </thead>
                 <tbody>
                   <template x-for="row in cmpReport[cmpTab==='vpn'?'vpn_rules':cmpTab==='ssids'?'ssids':'settings']" :key="row.label">
-                    <tr>
-                      <td class="small" style="max-width:220px;word-break:break-word" x-text="row.source_display"></td>
+                    <!-- Extra rows (on target but not in source) get a distinct style -->
+                    <tr :class="row.label.startsWith('[EXTRA]') ? 'table-warning' : ''">
+                      <td class="small" style="max-width:260px;word-break:break-word">
+                        <span x-show="row.label.startsWith('[EXTRA]')" class="badge bg-warning text-dark me-1" style="font-size:.65rem">EXTRA</span>
+                        <span x-text="row.source_display.replace(' ← extra (not in source)','')"></span>
+                      </td>
+                      <!-- Source column: ✓ if it's a source rule, — if it's extra on a target -->
+                      <td class="text-center small" :class="row.label.startsWith('[EXTRA]') ? 'compare-na' : 'compare-match'">
+                        <span class="fw-bold" x-text="row.label.startsWith('[EXTRA]') ? '—' : '✓'"></span>
+                      </td>
+                      <!-- Target columns -->
                       <template x-for="t in cmpReport.target_networks" :key="t.id">
                         <td :class="cellClass(row.cells[t.id])" class="text-center small" :title="row.cells[t.id]?.detail">
                           <span class="fw-bold" x-text="cellIcon(row.cells[t.id])"></span>
