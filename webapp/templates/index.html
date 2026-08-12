@@ -204,10 +204,26 @@
       <!-- ════════════════════════ VPN EXCLUSIONS ════════════════════════════ -->
       <div x-show="page==='exclusions'">
         <template x-if="!exclNetwork">
-          <div class="page-card text-center text-muted py-5">
-            <i class="bi bi-shield-check" style="font-size:3rem;opacity:.3"></i>
-            <p class="mt-2">Select a network from the <strong>Networks</strong> page to manage its VPN exclusions.</p>
-            <button class="btn btn-outline-primary" @click="navigate('networks')">Go to Networks</button>
+          <div class="page-card">
+            <div class="section-header">Select a Network</div>
+            <input class="form-control form-control-sm mb-3" type="text" x-model="exclNetworkSearch" placeholder="Search networks…"/>
+            <div class="table-wrap">
+              <table class="table table-hover mb-0">
+                <thead><tr><th>Name</th><th>Tags</th><th></th></tr></thead>
+                <tbody>
+                  <template x-if="networksLoading">
+                    <tr><td colspan="3" class="text-center py-3"><span class="spinner-border spinner-border-sm me-1"></span>Loading…</td></tr>
+                  </template>
+                  <template x-for="n in filteredExclNetworks" :key="n.id">
+                    <tr class="network-row">
+                      <td class="fw-semibold" x-text="n.name"></td>
+                      <td><template x-for="t in (n.tags||[])" :key="t"><span class="badge bg-light text-secondary me-1" x-text="t"></span></template></td>
+                      <td><button class="btn btn-sm btn-outline-primary" @click="loadExclusions(n)"><i class="bi bi-shield-check"></i> Manage</button></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
           </div>
         </template>
 
@@ -340,11 +356,12 @@
         <div x-show="copyStep===1">
           <div class="page-card">
             <div class="section-header">Step 1 — Select Source Network</div>
+            <input class="form-control form-control-sm mb-3" type="text" x-model="copySourceSearch" placeholder="Search networks…"/>
             <div class="table-wrap">
               <table class="table table-hover mb-0">
                 <thead><tr><th>Name</th><th>Tags</th><th></th></tr></thead>
                 <tbody>
-                  <template x-for="n in networks" :key="n.id">
+                  <template x-for="n in filteredCopySourceNetworks" :key="n.id">
                     <tr>
                       <td x-text="n.name"></td>
                       <td><template x-for="t in (n.tags||[])" :key="t"><span class="badge bg-light text-secondary me-1" x-text="t"></span></template></td>
@@ -387,8 +404,12 @@
         <div x-show="copyStep===3">
           <div class="page-card">
             <div class="section-header">Step 3 — Select Destination Networks</div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <input class="form-control form-control-sm" type="text" x-model="copyDestSearch" placeholder="Search networks…" style="max-width:280px"/>
+              <span class="text-muted small" x-text="`${copyDestNetworkIds.length} selected`"></span>
+            </div>
             <div style="max-height:350px;overflow-y:auto">
-              <template x-for="n in networks.filter(n=>n.id!==copySourceNetwork?.id)" :key="n.id">
+              <template x-for="n in filteredCopyDestNetworks" :key="n.id">
                 <div class="d-flex align-items-center gap-2 border-bottom py-2">
                   <input type="checkbox" class="form-check-input" :checked="copyDestNetworkIds.includes(n.id)" @change="toggleCopyDest(n.id)"/>
                   <span class="small fw-semibold" x-text="n.name"></span>
@@ -468,8 +489,9 @@
           <div class="col-md-5">
             <div class="page-card">
               <div class="section-header">Source Network</div>
+              <input class="form-control form-control-sm mb-2" type="text" x-model="cmpSourceSearch" placeholder="Search…"/>
               <div style="max-height:300px;overflow-y:auto">
-                <template x-for="n in networks" :key="n.id">
+                <template x-for="n in filteredCmpSourceNetworks" :key="n.id">
                   <div class="d-flex align-items-center gap-2 border-bottom py-2 network-row px-1"
                     :class="{'bg-primary bg-opacity-10': cmpSource?.id===n.id}"
                     @click="cmpSource=n; cmpTargetIds=cmpTargetIds.filter(id=>id!==n.id)">
@@ -483,9 +505,13 @@
           <!-- Targets -->
           <div class="col-md-5">
             <div class="page-card">
-              <div class="section-header">Target Networks</div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="section-header mb-0">Target Networks</div>
+                <span class="badge bg-primary" x-text="`${cmpTargetIds.length} selected`"></span>
+              </div>
+              <input class="form-control form-control-sm mb-2" type="text" x-model="cmpTargetSearch" placeholder="Search…"/>
               <div style="max-height:300px;overflow-y:auto">
-                <template x-for="n in networks.filter(n=>n.id!==cmpSource?.id)" :key="n.id">
+                <template x-for="n in filteredCmpTargetNetworks" :key="n.id">
                   <div class="d-flex align-items-center gap-2 border-bottom py-2 network-row px-1" @click="toggleCmpTarget(n.id)">
                     <input type="checkbox" class="form-check-input" :checked="cmpTargetIds.includes(n.id)" readonly/>
                     <span class="small fw-semibold" x-text="n.name"></span>
@@ -557,11 +583,12 @@
         <div x-show="nnStep===1">
           <div class="page-card">
             <div class="section-header">Step 1 — Select Template Network</div>
+            <input class="form-control form-control-sm mb-3" type="text" x-model="nnTemplateSearch" placeholder="Search networks…"/>
             <div class="table-wrap">
               <table class="table table-hover mb-0">
                 <thead><tr><th>Name</th><th>Tags</th><th></th></tr></thead>
                 <tbody>
-                  <template x-for="n in networks" :key="n.id">
+                  <template x-for="n in filteredNnTemplateNetworks" :key="n.id">
                     <tr>
                       <td x-text="n.name"></td>
                       <td><template x-for="t in (n.tags||[])" :key="t"><span class="badge bg-light text-secondary me-1" x-text="t"></span></template></td>

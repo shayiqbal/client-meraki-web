@@ -31,6 +31,7 @@ function app() {
     networkSearch: '',
 
     // ── Exclusions page ───────────────────────────────────────────────────────
+    exclNetworkSearch: '',
     exclNetwork: null,
     exclCurrentRules: [],
     exclProposedRules: [],
@@ -50,6 +51,8 @@ function app() {
     copyPreview: null,
     copyResults: null,
     copyLoading: false,
+    copySourceSearch: '',
+    copyDestSearch: '',
 
     // ── Compare ───────────────────────────────────────────────────────────────
     cmpSource: null,
@@ -57,6 +60,8 @@ function app() {
     cmpReport: null,
     cmpTab: 'vpn',
     cmpLoading: false,
+    cmpSourceSearch: '',
+    cmpTargetSearch: '',
 
     // ── New Network Wizard ────────────────────────────────────────────────────
     nnStep: 1,
@@ -75,6 +80,7 @@ function app() {
     nnSsidPsks: {},
     nnResult: null,
     nnLoading: false,
+    nnTemplateSearch: '',
 
     // ── Activity Log ──────────────────────────────────────────────────────────
     actLog: [],
@@ -155,6 +161,42 @@ function app() {
       return this.networks.filter(n =>
         !q || n.name.toLowerCase().includes(q) || (n.tags || []).join(' ').toLowerCase().includes(q)
       );
+    },
+
+    get filteredExclNetworks() {
+      const q = this.exclNetworkSearch.toLowerCase();
+      return this.networks.filter(n => !q || n.name.toLowerCase().includes(q));
+    },
+
+    get filteredCopySourceNetworks() {
+      const q = this.copySourceSearch.toLowerCase();
+      return this.networks.filter(n => !q || n.name.toLowerCase().includes(q));
+    },
+
+    get filteredCopyDestNetworks() {
+      const q = this.copyDestSearch.toLowerCase();
+      return this.networks.filter(n =>
+        n.id !== this.copySourceNetwork?.id &&
+        (!q || n.name.toLowerCase().includes(q))
+      );
+    },
+
+    get filteredCmpSourceNetworks() {
+      const q = this.cmpSourceSearch.toLowerCase();
+      return this.networks.filter(n => !q || n.name.toLowerCase().includes(q));
+    },
+
+    get filteredCmpTargetNetworks() {
+      const q = this.cmpTargetSearch.toLowerCase();
+      return this.networks.filter(n =>
+        n.id !== this.cmpSource?.id &&
+        (!q || n.name.toLowerCase().includes(q))
+      );
+    },
+
+    get filteredNnTemplateNetworks() {
+      const q = this.nnTemplateSearch.toLowerCase();
+      return this.networks.filter(n => !q || n.name.toLowerCase().includes(q));
     },
 
     selectedOrg() {
@@ -277,6 +319,7 @@ function app() {
       this.copyStep = 1; this.copySourceNetwork = null; this.copySourceRules = [];
       this.copySelectedRuleIdxs = []; this.copyDestNetworkIds = [];
       this.copyPreview = null; this.copyResults = null;
+      this.copySourceSearch = ''; this.copyDestSearch = '';
       this.page = 'copy';
     },
 
@@ -363,6 +406,7 @@ function app() {
     // =========================================================================
     startCompare() {
       this.cmpSource = null; this.cmpTargetIds = []; this.cmpReport = null; this.cmpTab = 'vpn';
+      this.cmpSourceSearch = ''; this.cmpTargetSearch = '';
       this.page = 'compare';
     },
 
@@ -409,7 +453,7 @@ function app() {
       this.nnName = ''; this.nnNotes = ''; this.nnSsidPsks = {};
       this.nnCopyTags = true; this.nnCopyVpn = true; this.nnCopyRoutes = false;
       this.nnCopyL3 = false; this.nnCopyL7 = false; this.nnCopySSIDs = false; this.nnCopySettings = false;
-      this.nnResult = null;
+      this.nnResult = null; this.nnTemplateSearch = '';
       this.page = 'newnet';
     },
 
