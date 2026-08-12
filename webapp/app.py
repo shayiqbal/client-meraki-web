@@ -78,7 +78,7 @@ app.include_router(network_mgmt.router, prefix="/api")
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 if __name__ == "__main__":
