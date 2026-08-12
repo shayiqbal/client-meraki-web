@@ -94,9 +94,9 @@ class CompareService:
                 t_rules = target_data[net["id"]]["rules"]
                 t_fps = {r.fingerprint() for r in t_rules.rules}
                 cells[net["id"]] = (
-                    Cell("match", "Identical rule present")
+                    Cell("match", "Match")
                     if fp in t_fps
-                    else Cell("missing", "Rule not present on this network")
+                    else Cell("missing", "Missing")
                 )
             rows.append(CompareRow(label=label, source_display=display, cells=cells))
 
@@ -131,9 +131,9 @@ class CompareService:
             cells = {}
             for net in targets:
                 cells[net["id"]] = (
-                    Cell("different", "Extra rule not present in source")
+                    Cell("different", "Extra — not in source")
                     if net["id"] in net_ids
-                    else Cell("na", "Not on this network either")
+                    else Cell("na", "—")
                 )
             rows.append(CompareRow(label=f"[EXTRA] {label}", source_display=display, cells=cells))
 

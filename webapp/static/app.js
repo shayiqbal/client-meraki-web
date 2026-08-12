@@ -92,10 +92,11 @@ function app() {
       if (this.sessionId) {
         try {
           this.orgs = await this.api('GET', '/api/orgs');
-          if (this.orgs.length) {
+          if (this.orgs.length === 1) {
             this.selectedOrgId = this.orgs[0].id;
             await this.loadNetworks();
           }
+          // Multiple orgs → leave selectedOrgId blank, user must pick
         } catch {
           this.sessionId = null;
           localStorage.removeItem('gmm_session');
@@ -114,11 +115,13 @@ function app() {
         this.sessionId = res.session_id;
         localStorage.setItem('gmm_session', res.session_id);
         this.orgs = res.orgs;
-        if (this.orgs.length) {
+        if (this.orgs.length === 1) {
+          // Only one org — auto-select and load
           this.selectedOrgId = this.orgs[0].id;
           await this.loadNetworks();
           await this.loadDashboard();
         }
+        // Multiple orgs → user must choose from the dropdown
         this.log('Logged in successfully.', 'success');
       } catch (e) {
         this.loginError = e.message;
@@ -442,7 +445,15 @@ function app() {
     },
 
     cellIcon(cell) {
-      return { match: '✓', missing: '−', different: '≠', na: 'n/a' }[cell?.status] || '?';
+      return { match: '✓', missing: '✗', different: '!', na: '—' }[cell?.status] || '?';
+    },
+
+    cellDetail(cell) {
+      // Only show detail for actionable statuses
+      if (!cell) return '';
+      if (cell.status === 'match') return '';
+      if (cell.status === 'missing') return 'Missing';
+      return cell.detail || '';
     },
 
     // =========================================================================
