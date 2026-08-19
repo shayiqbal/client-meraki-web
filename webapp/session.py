@@ -21,5 +21,16 @@ def require_session(
 
 
 def make_client(session: dict[str, Any]) -> MerakiVpnClientV1:
-    settings = Settings(api_key=session["api_key"])
-    return MerakiVpnClientV1(settings=settings, logger=logging.getLogger("webapp.meraki"))
+    """Return the cached Meraki client for this session, creating it once if needed.
+
+    Reusing one client per session means the underlying SDK connection pool
+    (and its TLS sessions) are shared across all requests, eliminating the
+    per-request TCP/TLS handshake overhead.
+    """
+    if session.get("client") is None:
+        settings = Settings(api_key=session["api_key"])
+        session["client"] = MerakiVpnClientV1(
+            settings=settings,
+            logger=logging.getLogger("webapp.meraki"),
+        )
+    return session["client"]

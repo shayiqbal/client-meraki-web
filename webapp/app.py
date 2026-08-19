@@ -30,6 +30,7 @@ def create_session(api_key: str) -> str:
         "api_key": api_key,
         "created": datetime.now(),
         "last_accessed": datetime.now(),
+        "client": None,          # cached MerakiVpnClientV1 — created once, reused
         "dry_runs": {},          # network_id -> DryRun
         "clone_configs": {},     # network_id -> CloneableConfig
     }

@@ -9,7 +9,7 @@ router = APIRouter(tags=["networks"])
 
 
 @router.get("/orgs")
-async def list_orgs(session=Depends(require_session)) -> list:
+def list_orgs(session=Depends(require_session)) -> list:
     try:
         return make_client(session).organizations()
     except Exception as exc:
@@ -17,7 +17,7 @@ async def list_orgs(session=Depends(require_session)) -> list:
 
 
 @router.get("/networks")
-async def list_networks(
+def list_networks(
     org_id: str = Query(...),
     session=Depends(require_session),
 ) -> list:

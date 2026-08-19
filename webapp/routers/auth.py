@@ -19,7 +19,7 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login")
-async def login(body: LoginRequest, request: Request) -> dict:
+def login(body: LoginRequest, request: Request) -> dict:
     key = body.api_key.strip()
     if not key:
         raise HTTPException(400, "API key is required.")
@@ -39,7 +39,7 @@ async def login(body: LoginRequest, request: Request) -> dict:
 
 
 @router.post("/logout")
-async def logout(
+def logout(
     request: Request,
     x_session_id: str | None = Header(default=None),
 ) -> dict:

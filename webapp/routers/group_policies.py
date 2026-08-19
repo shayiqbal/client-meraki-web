@@ -18,7 +18,7 @@ class GroupPolicyRequest(BaseModel):
 
 
 @router.get("/group-policies")
-async def list_group_policies(
+def list_group_policies(
     network_id: str = Query(...),
     session=Depends(require_session),
 ) -> list:
@@ -29,7 +29,7 @@ async def list_group_policies(
 
 
 @router.post("/group-policies/preview")
-async def gp_preview(body: GroupPolicyRequest, session=Depends(require_session)) -> list:
+def gp_preview(body: GroupPolicyRequest, session=Depends(require_session)) -> list:
     try:
         svc = GroupPolicyCopyService(make_client(session))
         previews = svc.preview(body.selected_policies, body.destination_networks)
@@ -56,7 +56,7 @@ async def gp_preview(body: GroupPolicyRequest, session=Depends(require_session))
 
 
 @router.post("/group-policies/execute")
-async def gp_execute(body: GroupPolicyRequest, session=Depends(require_session)) -> list:
+def gp_execute(body: GroupPolicyRequest, session=Depends(require_session)) -> list:
     try:
         svc = GroupPolicyCopyService(make_client(session))
         results = svc.execute(body.selected_policies, body.destination_networks)

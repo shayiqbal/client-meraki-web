@@ -40,7 +40,7 @@ def _ruleset_dict(rs: RuleSet) -> dict:
 # ── GET current rules ──────────────────────────────────────────────────────────
 
 @router.get("/exclusions")
-async def get_exclusions(
+def get_exclusions(
     org_id: str = Query(...),
     network_id: str = Query(...),
     session=Depends(require_session),
@@ -85,7 +85,7 @@ class DryRunRequest(BaseModel):
 
 
 @router.post("/exclusions/dry-run")
-async def dry_run(body: DryRunRequest, session=Depends(require_session)) -> dict:
+def dry_run(body: DryRunRequest, session=Depends(require_session)) -> dict:
     try:
         rules = [VpnExclusionRule(**r) for r in body.proposed_rules]
         proposed = RuleSet(rules=rules, mode=body.mode)
@@ -121,7 +121,7 @@ class DeployRequest(BaseModel):
 
 
 @router.post("/exclusions/deploy")
-async def deploy(body: DeployRequest, session=Depends(require_session)) -> dict:
+def deploy(body: DeployRequest, session=Depends(require_session)) -> dict:
     dr = session["dry_runs"].get(body.network_id)
     if not dr:
         raise HTTPException(400, "No dry run found. Run a dry run first.")

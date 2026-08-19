@@ -19,7 +19,7 @@ class CompareRequest(BaseModel):
 
 
 @router.post("/compare")
-async def compare_networks(body: CompareRequest, session=Depends(require_session)) -> dict:
+def compare_networks(body: CompareRequest, session=Depends(require_session)) -> dict:
     if not body.target_networks:
         raise HTTPException(400, "Select at least one target network.")
     try:

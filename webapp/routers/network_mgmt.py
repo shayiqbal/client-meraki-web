@@ -23,7 +23,7 @@ class CloneConfigRequest(BaseModel):
 
 
 @router.post("/network/clone-config")
-async def get_clone_config(body: CloneConfigRequest, session=Depends(require_session)) -> dict:
+def get_clone_config(body: CloneConfigRequest, session=Depends(require_session)) -> dict:
     try:
         svc = NetworkService(make_client(session))
         config = svc.get_cloneable_config(body.org_id, body.source_network)
@@ -47,6 +47,7 @@ async def get_clone_config(body: CloneConfigRequest, session=Depends(require_ses
                 }
                 for s in config.ssids
             ],
+            "group_policy_count": len(config.group_policies),
             "has_appliance_settings": bool(config.appliance_settings),
             "source_timezone": config.source_timezone,
         }
@@ -67,11 +68,12 @@ class CreateNetworkRequest(BaseModel):
     copy_l7_firewall: bool = False
     copy_ssids: bool = False
     copy_network_settings: bool = False
+    copy_group_policies: bool = False
     ssid_psks: dict[str, str] = {}
 
 
 @router.post("/network/create")
-async def create_network(body: CreateNetworkRequest, session=Depends(require_session)) -> dict:
+def create_network(body: CreateNetworkRequest, session=Depends(require_session)) -> dict:
     config: CloneableConfig | None = session["clone_configs"].get(body.source_network_id)
     if not config:
         raise HTTPException(400, "Clone config not loaded. Fetch the clone config first.")
@@ -87,6 +89,7 @@ async def create_network(body: CreateNetworkRequest, session=Depends(require_ses
             copy_l7_firewall=body.copy_l7_firewall,
             copy_ssids=body.copy_ssids,
             copy_network_settings=body.copy_network_settings,
+            copy_group_policies=body.copy_group_policies,
             ssid_psks={int(k): v for k, v in body.ssid_psks.items()},
         )
         svc = NetworkService(make_client(session))

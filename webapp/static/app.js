@@ -90,6 +90,7 @@ function app() {
     nnCopyL7: false,
     nnCopySSIDs: false,
     nnCopySettings: false,
+    nnCopyGroupPolicies: false,
     nnSsidPsks: {},
     nnResult: null,
     nnLoading: false,
@@ -147,7 +148,19 @@ function app() {
       await this.api('POST', '/api/logout').catch(() => {});
       this.sessionId = null;
       localStorage.removeItem('gmm_session');
-      this.orgs = []; this.networks = []; this.page = 'dashboard';
+      // Reset ALL state so nothing leaks into the next session
+      this.orgs = []; this.networks = []; this.selectedOrgId = ''; this.page = 'dashboard';
+      this.exclNetwork = null; this.exclCurrentRules = []; this.exclProposedRules = [];
+      this.exclDryRunResult = null; this.exclDeployResult = null; this.exclNetworkSearch = '';
+      this.copyStep = 1; this.copySourceNetwork = null; this.copySourceRules = [];
+      this.copySelectedRuleIdxs = []; this.copyDestNetworkIds = [];
+      this.copyPreview = null; this.copyResults = null;
+      this.gpStep = 1; this.gpSourceNetwork = null; this.gpSourcePolicies = [];
+      this.gpSelectedPolicyIdxs = []; this.gpDestNetworkIds = [];
+      this.gpPreview = null; this.gpResults = null;
+      this.cmpSource = null; this.cmpTargetIds = []; this.cmpReport = null;
+      this.nnStep = 1; this.nnTemplate = null; this.nnCloneConfig = null; this.nnResult = null;
+      this.actLog = [];
     },
 
     // =========================================================================
@@ -168,8 +181,17 @@ function app() {
 
     async onOrgChange() {
       this.networks = [];
+      // Clear all network-specific wizard states when org changes
+      this.exclNetwork = null; this.exclCurrentRules = []; this.exclProposedRules = [];
+      this.exclDryRunResult = null; this.exclDeployResult = null;
+      this.copyStep = 1; this.copySourceNetwork = null; this.copySourceRules = [];
+      this.copySelectedRuleIdxs = []; this.copyDestNetworkIds = [];
+      this.gpStep = 1; this.gpSourceNetwork = null; this.gpSourcePolicies = [];
+      this.gpSelectedPolicyIdxs = []; this.gpDestNetworkIds = [];
+      this.cmpSource = null; this.cmpTargetIds = []; this.cmpReport = null;
+      this.nnStep = 1; this.nnTemplate = null; this.nnCloneConfig = null;
       await this.loadNetworks();
-      await this.loadDashboard();
+      this.loadDashboard(); // fire without await — updates stats in background
     },
 
     get filteredNetworks() {
@@ -586,7 +608,8 @@ function app() {
       this.nnStep = 1; this.nnTemplate = null; this.nnCloneConfig = null;
       this.nnName = ''; this.nnNotes = ''; this.nnSsidPsks = {};
       this.nnCopyTags = true; this.nnCopyVpn = true; this.nnCopyRoutes = false;
-      this.nnCopyL3 = false; this.nnCopyL7 = false; this.nnCopySSIDs = false; this.nnCopySettings = false;
+      this.nnCopyL3 = false; this.nnCopyL7 = false; this.nnCopySSIDs = false;
+      this.nnCopySettings = false; this.nnCopyGroupPolicies = false;
       this.nnResult = null; this.nnTemplateSearch = '';
       this.page = 'newnet';
     },
@@ -632,6 +655,7 @@ function app() {
           copy_l7_firewall: this.nnCopyL7,
           copy_ssids: this.nnCopySSIDs,
           copy_network_settings: this.nnCopySettings,
+          copy_group_policies: this.nnCopyGroupPolicies,
           ssid_psks: this.nnSsidPsks,
         });
         this.nnStep = 6;

@@ -33,7 +33,7 @@ class CopyRequest(BaseModel):
 
 
 @router.post("/copy/preview")
-async def copy_preview(body: CopyRequest, session=Depends(require_session)) -> list:
+def copy_preview(body: CopyRequest, session=Depends(require_session)) -> list:
     try:
         rules = [VpnExclusionRule(**r) for r in body.selected_rules]
         svc = CopyService(make_client(session))
@@ -57,7 +57,7 @@ async def copy_preview(body: CopyRequest, session=Depends(require_session)) -> l
 
 
 @router.post("/copy/execute")
-async def copy_execute(body: CopyRequest, session=Depends(require_session)) -> list:
+def copy_execute(body: CopyRequest, session=Depends(require_session)) -> list:
     try:
         rules = [VpnExclusionRule(**r) for r in body.selected_rules]
         svc = CopyService(make_client(session))
