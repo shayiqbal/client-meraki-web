@@ -1,4 +1,4 @@
-/* GrayBar Meraki Manager – Web App Logic */
+/* Meraki Config Manager – Web App Logic */
 
 function app() {
   return {
@@ -13,6 +13,7 @@ function app() {
     pageTitles: {
       dashboard: 'Dashboard', networks: 'Networks',
       exclusions: 'VPN Exclusions', copy: 'Copy Rules',
+      grouppolicies: 'Group Policies',
       compare: 'Compare Networks', newnet: 'New Network',
       activity: 'Activity Log',
     },
@@ -53,6 +54,18 @@ function app() {
     copyLoading: false,
     copySourceSearch: '',
     copyDestSearch: '',
+
+    // ── Group Policies Wizard ─────────────────────────────────────────────────
+    gpStep: 1,
+    gpSourceNetwork: null,
+    gpSourcePolicies: [],
+    gpSelectedPolicyIdxs: [],
+    gpDestNetworkIds: [],
+    gpPreview: null,
+    gpResults: null,
+    gpLoading: false,
+    gpSourceSearch: '',
+    gpDestSearch: '',
 
     // ── Compare ───────────────────────────────────────────────────────────────
     cmpSource: null,
@@ -200,6 +213,29 @@ function app() {
     get filteredNnTemplateNetworks() {
       const q = this.nnTemplateSearch.toLowerCase();
       return this.networks.filter(n => !q || n.name.toLowerCase().includes(q));
+    },
+
+    get filteredGpSourceNetworks() {
+      const q = this.gpSourceSearch.toLowerCase();
+      return this.networks.filter(n => !q || n.name.toLowerCase().includes(q));
+    },
+
+    get filteredGpDestNetworks() {
+      const q = this.gpDestSearch.toLowerCase();
+      return this.networks.filter(n =>
+        n.id !== this.gpSourceNetwork?.id &&
+        (!q || n.name.toLowerCase().includes(q))
+      );
+    },
+
+    get gpSelectedPolicies() {
+      return this.gpSelectedPolicyIdxs.map(i => this.gpSourcePolicies[i]).filter(Boolean);
+    },
+
+    get gpDestNetworks() {
+      return this.networks.filter(n =>
+        this.gpDestNetworkIds.includes(n.id) && n.id !== this.gpSourceNetwork?.id
+      );
     },
 
     selectedOrg() {
@@ -402,6 +438,92 @@ function app() {
       if (rule.name) return rule.name;
       if (rule.application_id) return rule.application_id;
       return '—';
+    },
+
+    // =========================================================================
+    // Group Policies Wizard
+    // =========================================================================
+    startGpWizard() {
+      this.gpStep = 1; this.gpSourceNetwork = null; this.gpSourcePolicies = [];
+      this.gpSelectedPolicyIdxs = []; this.gpDestNetworkIds = [];
+      this.gpPreview = null; this.gpResults = null;
+      this.gpSourceSearch = ''; this.gpDestSearch = '';
+      this.page = 'grouppolicies';
+    },
+
+    async gpSelectSource(network) {
+      this.gpSourceNetwork = network;
+      this.gpLoading = true;
+      try {
+        const policies = await this.api('GET', `/api/group-policies?network_id=${network.id}`);
+        this.gpSourcePolicies = policies;
+        this.gpSelectedPolicyIdxs = policies.map((_, i) => i);
+        this.gpStep = 2;
+        this.log(`Loaded ${policies.length} group policy/policies from ${network.name}.`, 'info');
+      } catch (e) {
+        this.log(`Failed to load group policies: ${e.message}`, 'error');
+      } finally {
+        this.gpLoading = false;
+      }
+    },
+
+    toggleGpPolicy(i) {
+      const idx = this.gpSelectedPolicyIdxs.indexOf(i);
+      if (idx >= 0) this.gpSelectedPolicyIdxs.splice(idx, 1);
+      else this.gpSelectedPolicyIdxs.push(i);
+    },
+
+    toggleGpDest(id) {
+      const idx = this.gpDestNetworkIds.indexOf(id);
+      if (idx >= 0) this.gpDestNetworkIds.splice(idx, 1);
+      else this.gpDestNetworkIds.push(id);
+    },
+
+    gpPolicySummary(policy) {
+      const bw = policy.bandwidth?.settings || 'network default';
+      const vlan = policy.vlanTagging?.settings || 'network default';
+      const fw = policy.firewallAndTrafficShaping?.settings || 'network default';
+      return `bw: ${bw}  |  vlan: ${vlan}  |  fw: ${fw}`;
+    },
+
+    async runGpPreview() {
+      if (!this.gpSelectedPolicies.length || !this.gpDestNetworks.length) return;
+      this.gpLoading = true;
+      try {
+        this.gpPreview = await this.api('POST', '/api/group-policies/preview', {
+          selected_policies: this.gpSelectedPolicies,
+          destination_networks: this.gpDestNetworks,
+        });
+        this.gpStep = 4;
+      } catch (e) {
+        this.log(`Group policy preview failed: ${e.message}`, 'error');
+      } finally {
+        this.gpLoading = false;
+      }
+    },
+
+    async runGpExecute() {
+      if (!confirm(
+        `Copy ${this.gpSelectedPolicies.length} policy/policies to ` +
+        `${this.gpDestNetworks.length} network(s)?`
+      )) return;
+      this.gpLoading = true;
+      try {
+        this.gpResults = await this.api('POST', '/api/group-policies/execute', {
+          selected_policies: this.gpSelectedPolicies,
+          destination_networks: this.gpDestNetworks,
+        });
+        this.gpStep = 5;
+        const added = this.gpResults.reduce((s, r) => s + r.policies_added, 0);
+        this.log(
+          `Group policy copy complete: ${added} policy/policies added across ` +
+          `${this.gpResults.length} network(s).`, 'success'
+        );
+      } catch (e) {
+        this.log(`Group policy copy failed: ${e.message}`, 'error');
+      } finally {
+        this.gpLoading = false;
+      }
     },
 
     // =========================================================================

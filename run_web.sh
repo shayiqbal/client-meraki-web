@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 echo ""
 echo "============================================================"
-echo "  GrayBar Meraki Manager - Web Interface"
+echo "  Meraki Config Manager - Web Interface"
 echo "============================================================"
 echo ""
 

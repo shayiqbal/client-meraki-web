@@ -1,4 +1,4 @@
-"""GrayBar Meraki Manager - Web Application Entry Point."""
+"""Meraki Config Manager - Web Application Entry Point."""
 from __future__ import annotations
 
 import logging
@@ -54,7 +54,7 @@ def delete_session(sid: str) -> None:
 
 
 # ── FastAPI app ────────────────────────────────────────────────────────────────
-app = FastAPI(title="GrayBar Meraki Manager")
+app = FastAPI(title="Meraki Config Manager")
 
 _BASE = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=str(_BASE / "static")), name="static")
@@ -66,7 +66,7 @@ app.state.get_session = get_session
 app.state.delete_session = delete_session
 
 # ── Routers ────────────────────────────────────────────────────────────────────
-from webapp.routers import auth, compare, copy, exclusions, network_mgmt, networks  # noqa: E402
+from webapp.routers import auth, compare, copy, exclusions, group_policies, network_mgmt, networks  # noqa: E402
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(networks.router, prefix="/api")
@@ -74,6 +74,7 @@ app.include_router(exclusions.router, prefix="/api")
 app.include_router(copy.router, prefix="/api")
 app.include_router(compare.router, prefix="/api")
 app.include_router(network_mgmt.router, prefix="/api")
+app.include_router(group_policies.router, prefix="/api")
 
 
 @app.get("/", response_class=HTMLResponse)

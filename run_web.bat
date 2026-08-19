@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
-title GrayBar Meraki Manager - Web Server
+title Meraki Config Manager - Web Server
 
 echo.
 echo ============================================================
-echo   GrayBar Meraki Manager - Web Interface
+echo   Meraki Config Manager - Web Interface
 echo ============================================================
 echo.
 
