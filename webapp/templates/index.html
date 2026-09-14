@@ -1069,8 +1069,10 @@
             <template x-if="daPreview">
               <div>
                 <div class="mb-2">
-                  <span class="badge badge-new me-1" x-text="`${daPreview.change_count} will be updated`"></span>
-                  <span class="badge badge-exists me-1" x-text="`${daPreview.unchanged_count} already match`"></span>
+                  <span class="badge badge-new me-1" x-text="`${daPreview.change_count} address change${daPreview.change_count===1?'':'s'}`"></span>
+                  <span x-show="daPreview.remap_count" class="badge bg-warning text-dark me-1"
+                        x-text="`${daPreview.remap_count} map marker fix${daPreview.remap_count===1?'':'es'}`"></span>
+                  <span class="badge badge-exists me-1" x-text="`${daPreview.unchanged_count} already correct`"></span>
                   <span class="badge bg-secondary" x-text="`${daPreview.total_count} selected`"></span>
                 </div>
                 <div class="table-wrap" style="max-height:360px;overflow-y:auto">
@@ -1083,15 +1085,15 @@
                     </thead>
                     <tbody>
                       <template x-for="d in daPreview.devices" :key="d.serial">
-                        <tr :class="d.status==='change'?'change-new':'change-unchanged'">
+                        <tr :class="d.status==='change'?'change-new':(d.status==='remap'?'change-duplicate':'change-unchanged')">
                           <td class="small fw-semibold" x-text="d.name"></td>
                           <td class="small text-muted font-monospace" x-text="d.serial"></td>
                           <td class="small" x-text="d.current_address || '(no address set)'"></td>
                           <td class="small" x-text="d.new_address"></td>
                           <td class="small">
                             <span class="badge"
-                                  :class="d.status==='change'?'badge-new':'badge-exists'"
-                                  x-text="d.status==='change'?'Will be updated':'No change needed'"></span>
+                                  :class="d.status==='change'?'badge-new':(d.status==='remap'?'bg-warning text-dark':'badge-exists')"
+                                  x-text="d.detail"></span>
                           </td>
                         </tr>
                       </template>
@@ -1105,7 +1107,7 @@
               <button class="btn btn-success" @click="daExecute()"
                       :disabled="!daPreview || daRunning">
                 <i class="bi bi-geo-alt-fill me-1"></i>
-                Update <span x-text="daPreview ? daPreview.total_count : 0"></span> Device Address(es)
+                Update <span x-text="daPreview ? daPreview.update_count : 0"></span> Device(s)
               </button>
               <button class="btn btn-outline-secondary" @click="daStep=2">Back</button>
             </div>

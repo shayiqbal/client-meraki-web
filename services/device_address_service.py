@@ -37,6 +37,22 @@ def _norm(address: str | None) -> str:
     return " ".join((address or "").split()).casefold()
 
 
+def has_map_position(lat: Any, lng: Any) -> bool:
+    """Whether a device has a real map marker on the dashboard.
+
+    Meraki reports an unplaced marker as ``0.0, 0.0`` (null island) as well as
+    ``None``, so both must count as "no position". Treating 0,0 as valid would
+    make the tool skip devices whose address is set but whose marker was never
+    placed — exactly the case this feature exists to fix.
+    """
+    if lat is None or lng is None:
+        return False
+    try:
+        return not (float(lat) == 0.0 and float(lng) == 0.0)
+    except (TypeError, ValueError):
+        return False
+
+
 @dataclass(slots=True)
 class DeviceAddressPreview:
     serial: str
@@ -47,11 +63,13 @@ class DeviceAddressPreview:
     current_lat: float | None
     current_lng: float | None
     new_address: str
-    status: str  # "change" | "unchanged"
+    status: str  # "change" | "remap" | "unchanged"
+    detail: str = ""
 
     @property
     def will_change(self) -> bool:
-        return self.status == "change"
+        """``remap`` devices are still submitted — their marker needs placing."""
+        return self.status in {"change", "remap"}
 
 
 @dataclass(slots=True)
@@ -64,8 +82,18 @@ class BulkAddressPreview:
         return sum(d.status == "change" for d in self.devices)
 
     @property
+    def remap_count(self) -> int:
+        """Address already correct, but the map marker is missing."""
+        return sum(d.status == "remap" for d in self.devices)
+
+    @property
     def unchanged_count(self) -> int:
         return sum(d.status == "unchanged" for d in self.devices)
+
+    @property
+    def update_count(self) -> int:
+        """Devices that will actually be written to (change + remap)."""
+        return sum(d.will_change for d in self.devices)
 
     @property
     def total_count(self) -> int:
@@ -117,25 +145,39 @@ class DeviceAddressService:
     ) -> BulkAddressPreview:
         """Read-only summary of what the bulk update would do. Makes no API calls."""
         address = new_address.strip()
-        rows = [
-            DeviceAddressPreview(
-                serial=device.get("serial", ""),
-                name=device_label(device),
-                model=device.get("model", "") or "",
-                mac=device.get("mac", "") or "",
-                current_address=(device.get("address") or "").strip(),
-                current_lat=device.get("lat"),
-                current_lng=device.get("lng"),
-                new_address=address,
-                status=(
-                    "unchanged"
-                    if _norm(device.get("address")) == _norm(address)
-                    else "change"
-                ),
-            )
-            for device in devices
-        ]
-        return BulkAddressPreview(new_address=address, devices=rows)
+        return BulkAddressPreview(
+            new_address=address,
+            devices=[self._preview_row(d, address) for d in devices],
+        )
+
+    @staticmethod
+    def _preview_row(device: dict[str, Any], address: str) -> DeviceAddressPreview:
+        lat, lng = device.get("lat"), device.get("lng")
+        same_address = _norm(device.get("address")) == _norm(address)
+        placed = has_map_position(lat, lng)
+
+        if not same_address:
+            status, detail = "change", "Address will be updated"
+        elif not placed:
+            # Address is already right but the marker was never placed (Meraki
+            # reports this as 0,0 or null). Re-sending the address with
+            # moveMapMarker lets Meraki geocode it and drop the pin.
+            status, detail = "remap", "Address already correct — map marker will be placed"
+        else:
+            status, detail = "unchanged", "No change needed"
+
+        return DeviceAddressPreview(
+            serial=device.get("serial", ""),
+            name=device_label(device),
+            model=device.get("model", "") or "",
+            mac=device.get("mac", "") or "",
+            current_address=(device.get("address") or "").strip(),
+            current_lat=lat,
+            current_lng=lng,
+            new_address=address,
+            status=status,
+            detail=detail,
+        )
 
     # ── Write ──────────────────────────────────────────────────────────────
 
@@ -221,7 +263,7 @@ class DeviceAddressService:
             result.verify_note = (
                 f"Address on dashboard reads '{live_address}' after update."
             )
-        elif lat is None or lng is None:
+        elif not has_map_position(lat, lng):
             result.verify_note = (
                 "Address saved, but Meraki has not geocoded a map position yet."
             )

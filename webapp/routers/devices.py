@@ -76,7 +76,9 @@ def preview_address(
             "new_address": preview.new_address,
             "total_count": preview.total_count,
             "change_count": preview.change_count,
+            "remap_count": preview.remap_count,
             "unchanged_count": preview.unchanged_count,
+            "update_count": preview.update_count,
             "devices": [
                 {
                     "serial": d.serial,
@@ -88,6 +90,8 @@ def preview_address(
                     "current_lng": d.current_lng,
                     "new_address": d.new_address,
                     "status": d.status,
+                    "detail": d.detail,
+                    "will_change": d.will_change,
                 }
                 for d in preview.devices
             ],

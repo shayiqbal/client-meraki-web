@@ -823,9 +823,10 @@ function app() {
       const address = this.daPreview.new_address;
       const ok = confirm(
         `Apply the address\n\n    ${address}\n\n` +
-        `to ${devices.length} device(s)?\n\n` +
-        `• ${this.daPreview.change_count} device(s) will change\n` +
-        `• ${this.daPreview.unchanged_count} already have this address\n\n` +
+        `to ${devices.length} selected device(s)?\n\n` +
+        `• ${this.daPreview.change_count} address change(s)\n` +
+        `• ${this.daPreview.remap_count} device(s) with the right address but no map marker\n` +
+        `• ${this.daPreview.unchanged_count} already correct\n\n` +
         `Each device's map marker on the Meraki Dashboard will be moved to match ` +
         `the new address. No other device settings are modified.`
       );
