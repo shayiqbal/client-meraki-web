@@ -15,6 +15,7 @@ function app() {
       exclusions: 'VPN Exclusions', copy: 'Copy Rules',
       grouppolicies: 'Group Policies',
       compare: 'Compare Networks', newnet: 'New Network',
+      deviceaddr: 'Device Addresses',
       activity: 'Activity Log',
     },
 
@@ -96,6 +97,25 @@ function app() {
     nnLoading: false,
     nnTemplateSearch: '',
 
+    // ── Device Addresses (bulk address / map marker update) ───────────────────
+    daStep: 1,
+    daAllNetworks: [],
+    daNetwork: null,
+    daNetworkSearch: '',
+    daNetworksLoading: false,
+    daDevices: [],
+    daDevicesLoading: false,
+    daSelectedSerials: [],
+    daDeviceSearch: '',
+    daNewAddress: '',
+    daPreview: null,
+    daPreviewLoading: false,
+    daRunning: false,
+    daResults: [],
+    daDone: 0,
+    daTotal: 0,
+    daCurrentLabel: '',
+
     // ── Activity Log ──────────────────────────────────────────────────────────
     actLog: [],
 
@@ -160,6 +180,7 @@ function app() {
       this.gpPreview = null; this.gpResults = null;
       this.cmpSource = null; this.cmpTargetIds = []; this.cmpReport = null;
       this.nnStep = 1; this.nnTemplate = null; this.nnCloneConfig = null; this.nnResult = null;
+      this.resetDeviceAddrState(); this.daAllNetworks = [];
       this.actLog = [];
     },
 
@@ -190,6 +211,7 @@ function app() {
       this.gpSelectedPolicyIdxs = []; this.gpDestNetworkIds = [];
       this.cmpSource = null; this.cmpTargetIds = []; this.cmpReport = null;
       this.nnStep = 1; this.nnTemplate = null; this.nnCloneConfig = null;
+      this.resetDeviceAddrState(); this.daAllNetworks = [];
       await this.loadNetworks();
       this.loadDashboard(); // fire without await — updates stats in background
     },
@@ -670,6 +692,186 @@ function app() {
       } finally {
         this.nnLoading = false;
       }
+    },
+
+    // =========================================================================
+    // Device Addresses — bulk address / map marker update
+    // =========================================================================
+    resetDeviceAddrState() {
+      this.daStep = 1;
+      this.daNetwork = null; this.daNetworkSearch = '';
+      this.daDevices = []; this.daSelectedSerials = []; this.daDeviceSearch = '';
+      this.daNewAddress = ''; this.daPreview = null;
+      this.daRunning = false; this.daResults = [];
+      this.daDone = 0; this.daTotal = 0; this.daCurrentLabel = '';
+    },
+
+    startDeviceAddrWizard() {
+      if (this.daRunning) { this.page = 'deviceaddr'; return; }
+      this.resetDeviceAddrState();
+      this.page = 'deviceaddr';
+      this.loadAllNetworks();
+    },
+
+    // Devices needing an address are often APs/switches/cameras, so this uses
+    // the unfiltered network list rather than the appliance-only one.
+    async loadAllNetworks() {
+      if (!this.selectedOrgId) return;
+      this.daNetworksLoading = true;
+      try {
+        this.daAllNetworks = await this.api('GET', `/api/all-networks?org_id=${this.selectedOrgId}`);
+      } catch (e) {
+        this.log(`Load networks failed: ${e.message}`, 'error');
+      } finally {
+        this.daNetworksLoading = false;
+      }
+    },
+
+    get daFilteredNetworks() {
+      const q = this.daNetworkSearch.toLowerCase();
+      return this.daAllNetworks.filter(n => !q || (n.name || '').toLowerCase().includes(q));
+    },
+
+    async daSelectNetwork(network) {
+      this.daNetwork = network;
+      this.daDevices = []; this.daSelectedSerials = []; this.daDeviceSearch = '';
+      this.daPreview = null; this.daNewAddress = '';
+      this.daDevicesLoading = true;
+      try {
+        this.daDevices = await this.api('GET', `/api/devices?network_id=${network.id}`);
+        this.daStep = 2;
+        this.log(`Loaded ${this.daDevices.length} device(s) from ${network.name}.`, 'info');
+        if (!this.daDevices.length) {
+          this.log(`${network.name} has no devices to update.`, 'warning');
+        }
+      } catch (e) {
+        this.log(`Failed to load devices: ${e.message}`, 'error');
+      } finally {
+        this.daDevicesLoading = false;
+      }
+    },
+
+    daLabel(d) {
+      return (d.name || '').trim() || (d.mac || '').trim() || (d.serial || '').trim() || '(unnamed device)';
+    },
+
+    daCoord(v) {
+      return (v === null || v === undefined) ? '—' : Number(v).toFixed(6);
+    },
+
+    get daFilteredDevices() {
+      const q = this.daDeviceSearch.toLowerCase();
+      if (!q) return this.daDevices;
+      return this.daDevices.filter(d =>
+        [this.daLabel(d), d.model, d.serial, d.address].join(' ').toLowerCase().includes(q)
+      );
+    },
+
+    daToggleDevice(serial) {
+      const i = this.daSelectedSerials.indexOf(serial);
+      if (i >= 0) this.daSelectedSerials.splice(i, 1);
+      else this.daSelectedSerials.push(serial);
+      this.daPreview = null;   // selection changed → previous preview is stale
+    },
+
+    // Select All applies to the currently visible (filtered) rows; individual
+    // devices can still be unticked afterwards.
+    daSelectAll() {
+      const visible = this.daFilteredDevices.map(d => d.serial);
+      this.daSelectedSerials = [...new Set([...this.daSelectedSerials, ...visible])];
+      this.daPreview = null;
+    },
+
+    daDeselectAll() {
+      const visible = new Set(this.daFilteredDevices.map(d => d.serial));
+      this.daSelectedSerials = this.daSelectedSerials.filter(s => !visible.has(s));
+      this.daPreview = null;
+    },
+
+    get daSelectedDevices() {
+      return this.daDevices.filter(d => this.daSelectedSerials.includes(d.serial));
+    },
+
+    daGoToAddress() {
+      if (!this.daSelectedDevices.length) return;
+      this.daPreview = null;
+      this.daStep = 3;
+    },
+
+    async daRunPreview() {
+      const address = this.daNewAddress.trim();
+      if (!address || !this.daSelectedDevices.length) return;
+      this.daPreviewLoading = true;
+      try {
+        this.daPreview = await this.api('POST', '/api/devices/address/preview', {
+          devices: this.daSelectedDevices,
+          new_address: address,
+        });
+      } catch (e) {
+        this.daPreview = null;
+        this.log(`Preview failed: ${e.message}`, 'error');
+      } finally {
+        this.daPreviewLoading = false;
+      }
+    },
+
+    // Devices are updated one request at a time so progress is live and a
+    // failure on any single device never stops the remaining ones.
+    async daExecute() {
+      if (!this.daPreview || this.daRunning) return;
+      const devices = this.daSelectedDevices;
+      const address = this.daPreview.new_address;
+      const ok = confirm(
+        `Apply the address\n\n    ${address}\n\n` +
+        `to ${devices.length} device(s)?\n\n` +
+        `• ${this.daPreview.change_count} device(s) will change\n` +
+        `• ${this.daPreview.unchanged_count} already have this address\n\n` +
+        `Each device's map marker on the Meraki Dashboard will be moved to match ` +
+        `the new address. No other device settings are modified.`
+      );
+      if (!ok) return;
+
+      this.daRunning = true;
+      this.daResults = [];
+      this.daDone = 0;
+      this.daTotal = devices.length;
+      this.daCurrentLabel = '';
+      this.daStep = 4;
+      this.log(`Bulk address update started: ${devices.length} device(s) → ${address}`, 'info');
+
+      for (const device of devices) {
+        this.daCurrentLabel = this.daLabel(device);
+        try {
+          const res = await this.api('POST', '/api/devices/address/update-one', {
+            device, new_address: address,
+          });
+          this.daResults.push(res);
+        } catch (e) {
+          // Transport/session error — record it and keep going.
+          this.daResults.push({
+            serial: device.serial, name: this.daLabel(device), model: device.model || '',
+            success: false, old_address: device.address || '', new_address: address,
+            lat: null, lng: null, verified: false, verify_note: '', error: e.message,
+          });
+        }
+        this.daDone += 1;
+      }
+
+      this.daRunning = false;
+      this.daCurrentLabel = '';
+      const failed = this.daFailedCount;
+      this.log(
+        `Bulk address update complete: ${this.daSuccessCount} updated, ${failed} failed ` +
+        `(${this.daVerifiedCount} verified on dashboard).`,
+        failed === 0 ? 'success' : 'warning'
+      );
+    },
+
+    get daSuccessCount() { return this.daResults.filter(r => r.success).length; },
+    get daFailedCount()  { return this.daResults.filter(r => !r.success).length; },
+    get daVerifiedCount() { return this.daResults.filter(r => r.success && r.verified).length; },
+    get daProgressPct() {
+      return this.daTotal ? Math.round((this.daDone / this.daTotal) * 100) : 0;
     },
 
     // =========================================================================

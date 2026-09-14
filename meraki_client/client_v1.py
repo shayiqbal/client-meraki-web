@@ -56,6 +56,55 @@ class MerakiVpnClientV1(MerakiVpnClient):
             network_id=network_id,
         )
 
+    # ── Devices ────────────────────────────────────────────────────────────
+
+    def get_network_devices(self, network_id: str) -> list[dict[str, Any]]:
+        """All devices claimed into a network.
+
+        Each item carries ``serial``, ``name``, ``model``, ``mac``, ``address``,
+        ``lat``, ``lng``, ``notes``, ``tags`` and ``networkId``.
+        """
+        return self._call(
+            lambda: self.dashboard.networks.getNetworkDevices(network_id),
+            "list network devices",
+            network_id=network_id,
+        )
+
+    def get_device(self, serial: str) -> dict[str, Any]:
+        return self._call(
+            lambda: self.dashboard.devices.getDevice(serial),
+            "get device",
+            serial=serial,
+        )
+
+    def update_device_address(
+        self,
+        serial: str,
+        address: str,
+        move_map_marker: bool = True,
+    ) -> dict[str, Any]:
+        """Set a device's physical address and reposition its dashboard map marker.
+
+        Deliberately narrow: only ``address`` and ``moveMapMarker`` are ever sent
+        to ``PUT /devices/{serial}``. The Meraki SDK builds the request body from
+        the keyword arguments it receives, so no other device attribute (name,
+        tags, notes, floor plan, switch profile) can be altered by this call.
+
+        ``lat``/``lng`` are intentionally *never* sent: the Meraki API documents
+        ``moveMapMarker`` as "Only applies when lat and lng are not specified",
+        so including them would suppress geocoding and leave the map marker where
+        it was.
+        """
+        return self._call(
+            lambda: self.dashboard.devices.updateDevice(
+                serial,
+                address=address,
+                moveMapMarker=move_map_marker,
+            ),
+            "update device address",
+            serial=serial,
+        )
+
     # ── Appliance static routes ────────────────────────────────────────────
 
     def get_appliance_static_routes(self, network_id: str) -> list[dict[str, Any]]:

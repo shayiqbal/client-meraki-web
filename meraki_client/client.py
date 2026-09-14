@@ -87,17 +87,26 @@ class MerakiVpnClient:
             self.dashboard.organizations.getOrganizations, "list organizations"
         )
 
-    def networks(self, organization_id: str) -> list[dict[str, Any]]:
-        items = self._call(
+    def all_networks(self, organization_id: str) -> list[dict[str, Any]]:
+        """Every network in the organization, unfiltered by product type.
+
+        ``networks()`` narrows the result to appliance networks because the VPN
+        exclusion features only apply to MX. Device-level features (addresses,
+        inventory) need wireless/switch/camera networks too, so they use this.
+        """
+        return self._call(
             lambda: self.dashboard.organizations.getOrganizationNetworks(
                 organization_id, total_pages="all"
             ),
             "list networks",
             organization_id=organization_id,
         )
+
+    def networks(self, organization_id: str) -> list[dict[str, Any]]:
+        """Appliance-capable networks only (used by the VPN exclusion features)."""
         return [
             item
-            for item in items
+            for item in self.all_networks(organization_id)
             if "appliance" in item.get("productTypes", [])
             or item.get("type") in {"appliance", "combined"}
         ]

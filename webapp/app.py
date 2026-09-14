@@ -67,7 +67,7 @@ app.state.get_session = get_session
 app.state.delete_session = delete_session
 
 # ── Routers ────────────────────────────────────────────────────────────────────
-from webapp.routers import auth, compare, copy, exclusions, group_policies, network_mgmt, networks  # noqa: E402
+from webapp.routers import auth, compare, copy, devices, exclusions, group_policies, network_mgmt, networks  # noqa: E402
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(networks.router, prefix="/api")
@@ -76,6 +76,7 @@ app.include_router(copy.router, prefix="/api")
 app.include_router(compare.router, prefix="/api")
 app.include_router(network_mgmt.router, prefix="/api")
 app.include_router(group_policies.router, prefix="/api")
+app.include_router(devices.router, prefix="/api")
 
 
 @app.get("/", response_class=HTMLResponse)

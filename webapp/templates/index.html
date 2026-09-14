@@ -63,6 +63,9 @@
       <div class="nav-item" :class="{active: page==='newnet'}" @click="startNewNet()">
         <i class="bi bi-plus-circle"></i> New Network
       </div>
+      <div class="nav-item" :class="{active: page==='deviceaddr'}" @click="startDeviceAddrWizard()">
+        <i class="bi bi-geo-alt"></i> Device Addresses
+      </div>
       <div class="nav-item" :class="{active: page==='activity'}" @click="navigate('activity')">
         <i class="bi bi-journal-text"></i> Activity Log
         <span x-show="actLog.length" class="badge bg-secondary ms-auto" x-text="actLog.length"></span>
@@ -922,6 +925,251 @@
               <button class="btn btn-outline-primary" @click="startNewNet()">Create Another</button>
             </div>
           </template>
+        </div>
+      </div>
+
+      <!-- ══════════════════════ DEVICE ADDRESSES ════════════════════════════ -->
+      <div x-show="page==='deviceaddr'">
+        <div class="wizard-steps mb-4">
+          <template x-for="s in [1,2,3,4]" :key="s">
+            <template x-if="true">
+              <span class="d-flex align-items-center">
+                <span class="step-bubble"
+                      :class="daStep>s?'done':daStep===s?'active':'pending'"
+                      x-text="daStep>s?'✓':s"></span>
+                <span x-show="s<4" class="step-line" :class="daStep>s?'done':''"></span>
+              </span>
+            </template>
+          </template>
+        </div>
+
+        <!-- Step 1 — Select network -->
+        <div x-show="daStep===1">
+          <div class="page-card">
+            <div class="section-header">Step 1 — Select Network</div>
+            <p class="text-muted small">
+              Choose the network whose devices you want to re-address. All network types are
+              listed — appliances, access points, switches and cameras.
+            </p>
+            <input class="form-control form-control-sm mb-2" type="text" x-model="daNetworkSearch"
+                   placeholder="Search networks…" style="max-width:320px"/>
+            <template x-if="daNetworksLoading">
+              <div class="text-center py-4 text-muted">
+                <span class="spinner-border spinner-border-sm me-2"></span>Loading networks…
+              </div>
+            </template>
+            <template x-if="!daNetworksLoading && !daFilteredNetworks.length">
+              <div class="text-center py-4 text-muted">No networks found.</div>
+            </template>
+            <div style="max-height:400px;overflow-y:auto">
+              <template x-for="n in daFilteredNetworks" :key="n.id">
+                <div class="d-flex align-items-center gap-2 border-bottom py-2 network-row"
+                     style="cursor:pointer" @click="daSelectNetwork(n)">
+                  <i class="bi bi-diagram-3 text-muted"></i>
+                  <span class="fw-semibold small" x-text="n.name"></span>
+                  <span class="text-muted small ms-1" x-text="(n.productTypes||[]).join(', ')"></span>
+                  <span class="ms-auto">
+                    <span x-show="daDevicesLoading && daNetwork?.id===n.id"
+                          class="spinner-border spinner-border-sm text-primary"></span>
+                    <i x-show="!(daDevicesLoading && daNetwork?.id===n.id)"
+                       class="bi bi-chevron-right text-muted"></i>
+                  </span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 — Select devices -->
+        <div x-show="daStep===2">
+          <div class="page-card">
+            <div class="section-header">
+              Step 2 — Select Devices in <em x-text="daNetwork?.name"></em>
+            </div>
+            <p class="text-muted small">
+              Tick the devices that should receive the new address. Use <strong>Select All</strong>
+              to take the whole network, then untick any device you want to leave alone.
+            </p>
+            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+              <input class="form-control form-control-sm" type="text" x-model="daDeviceSearch"
+                     placeholder="Search name, model, serial or address…" style="max-width:320px"/>
+              <button class="btn btn-sm btn-outline-secondary" @click="daSelectAll()">Select All</button>
+              <button class="btn btn-sm btn-outline-secondary" @click="daDeselectAll()">Deselect All</button>
+              <span class="text-muted small ms-auto"
+                    x-text="`${daSelectedSerials.length} of ${daDevices.length} device(s) selected`"></span>
+            </div>
+            <div class="table-wrap" style="max-height:420px;overflow-y:auto">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th style="width:36px"></th>
+                    <th>Device Name</th>
+                    <th>Model</th>
+                    <th>Serial</th>
+                    <th>Current Address</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-if="!daFilteredDevices.length">
+                    <tr><td colspan="7" class="text-center py-4 text-muted">No devices found.</td></tr>
+                  </template>
+                  <template x-for="d in daFilteredDevices" :key="d.serial">
+                    <tr>
+                      <td>
+                        <input type="checkbox" class="form-check-input"
+                               :checked="daSelectedSerials.includes(d.serial)"
+                               @change="daToggleDevice(d.serial)"/>
+                      </td>
+                      <td class="fw-semibold small" x-text="daLabel(d)"></td>
+                      <td class="small text-muted" x-text="d.model || '—'"></td>
+                      <td class="small text-muted font-monospace" x-text="d.serial"></td>
+                      <td class="small" x-text="(d.address||'').trim() || '(no address set)'"></td>
+                      <td class="small text-muted" x-text="daCoord(d.lat)"></td>
+                      <td class="small text-muted" x-text="daCoord(d.lng)"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+              <button class="btn btn-primary" @click="daGoToAddress()"
+                      :disabled="!daSelectedSerials.length">
+                Next: New Address
+                <span class="badge bg-white text-primary ms-1" x-text="daSelectedSerials.length"></span>
+              </button>
+              <button class="btn btn-outline-secondary" @click="daStep=1">Back</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 — New address + preview -->
+        <div x-show="daStep===3">
+          <div class="page-card">
+            <div class="section-header">Step 3 — New Address &amp; Preview</div>
+            <p class="text-muted small">
+              Enter the site address to apply to every selected device. Meraki geocodes the address
+              and moves each device's dashboard map marker to match.
+              No other device setting is changed.
+            </p>
+            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+              <label class="form-label fw-semibold mb-0">New address</label>
+              <input class="form-control" type="text" x-model="daNewAddress"
+                     @input="daPreview=null" @keydown.enter="daRunPreview()"
+                     placeholder="e.g. 500 Terry A Francois Blvd, San Francisco, CA 94158, USA"
+                     style="max-width:520px"/>
+              <button class="btn btn-outline-primary" @click="daRunPreview()"
+                      :disabled="!daNewAddress.trim() || daPreviewLoading">
+                <span x-show="daPreviewLoading" class="spinner-border spinner-border-sm me-1"></span>
+                Generate Preview
+              </button>
+            </div>
+
+            <template x-if="daPreview">
+              <div>
+                <div class="mb-2">
+                  <span class="badge badge-new me-1" x-text="`${daPreview.change_count} will be updated`"></span>
+                  <span class="badge badge-exists me-1" x-text="`${daPreview.unchanged_count} already match`"></span>
+                  <span class="badge bg-secondary" x-text="`${daPreview.total_count} selected`"></span>
+                </div>
+                <div class="table-wrap" style="max-height:360px;overflow-y:auto">
+                  <table class="table mb-0">
+                    <thead>
+                      <tr>
+                        <th>Device Name</th><th>Serial</th>
+                        <th>Current Address</th><th>New Address</th><th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="d in daPreview.devices" :key="d.serial">
+                        <tr :class="d.status==='change'?'change-new':'change-unchanged'">
+                          <td class="small fw-semibold" x-text="d.name"></td>
+                          <td class="small text-muted font-monospace" x-text="d.serial"></td>
+                          <td class="small" x-text="d.current_address || '(no address set)'"></td>
+                          <td class="small" x-text="d.new_address"></td>
+                          <td class="small">
+                            <span class="badge"
+                                  :class="d.status==='change'?'badge-new':'badge-exists'"
+                                  x-text="d.status==='change'?'Will be updated':'No change needed'"></span>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </template>
+
+            <div class="mt-3 d-flex gap-2">
+              <button class="btn btn-success" @click="daExecute()"
+                      :disabled="!daPreview || daRunning">
+                <i class="bi bi-geo-alt-fill me-1"></i>
+                Update <span x-text="daPreview ? daPreview.total_count : 0"></span> Device Address(es)
+              </button>
+              <button class="btn btn-outline-secondary" @click="daStep=2">Back</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4 — Progress + results -->
+        <div x-show="daStep===4">
+          <div class="page-card">
+            <div class="section-header">Step 4 — Results</div>
+            <p class="text-muted small">
+              Each device is updated independently — a failure on one device does not stop the rest.
+              Every update is verified by re-reading the device from Meraki.
+            </p>
+
+            <div class="progress mb-2" style="height:20px">
+              <div class="progress-bar" :class="daRunning?'progress-bar-striped progress-bar-animated':''"
+                   :style="`width:${daProgressPct}%`" x-text="`${daProgressPct}%`"></div>
+            </div>
+            <div class="small text-muted mb-3">
+              <template x-if="daRunning">
+                <span x-text="`Updating ${daDone+1} of ${daTotal} — ${daCurrentLabel}`"></span>
+              </template>
+              <template x-if="!daRunning && daTotal">
+                <span x-text="`Finished — ${daSuccessCount} updated (${daVerifiedCount} verified), ${daFailedCount} failed.`"></span>
+              </template>
+            </div>
+
+            <div class="table-wrap" style="max-height:420px;overflow-y:auto">
+              <table class="table mb-0">
+                <thead>
+                  <tr>
+                    <th>Device Name</th><th>Serial</th><th>Result</th>
+                    <th>New Address</th><th>Latitude</th><th>Longitude</th><th>Verification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-if="!daResults.length">
+                    <tr><td colspan="7" class="text-center py-4 text-muted">Waiting for the first device…</td></tr>
+                  </template>
+                  <template x-for="r in daResults" :key="r.serial">
+                    <tr>
+                      <td class="small fw-semibold" x-text="r.name"></td>
+                      <td class="small text-muted font-monospace" x-text="r.serial"></td>
+                      <td>
+                        <span class="badge"
+                              :class="!r.success ? 'bg-danger' : (r.verified ? 'bg-success' : 'bg-warning text-dark')"
+                              x-text="!r.success ? 'Failed' : (r.verified ? 'Updated' : 'Updated (unverified)')"></span>
+                      </td>
+                      <td class="small" x-text="r.new_address || '—'"></td>
+                      <td class="small text-muted" x-text="daCoord(r.lat)"></td>
+                      <td class="small text-muted" x-text="daCoord(r.lng)"></td>
+                      <td class="small text-muted" x-text="r.error || r.verify_note"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-3 d-flex gap-2">
+              <button class="btn btn-outline-primary" @click="startDeviceAddrWizard()"
+                      :disabled="daRunning">Start Over</button>
+            </div>
+          </div>
         </div>
       </div>
 
