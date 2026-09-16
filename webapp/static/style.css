@@ -42,9 +42,6 @@ body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #f
 .topbar { height: var(--topbar-h); background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 1rem; padding: 0 1.5rem; flex-shrink: 0; }
 .topbar-title { font-weight: 600; font-size: 1.1rem; color: #1e293b; flex: 1; }
 .content { flex: 1; overflow-y: auto; padding: 1.5rem; }
-.page-overview { display: flex; align-items: flex-start; gap: .65rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a5f; margin-bottom: 1rem; padding: .75rem 1rem; }
-.page-overview i { color: var(--accent); font-size: 1rem; margin-top: .1rem; }
-.page-overview p { font-size: .875rem; line-height: 1.45; margin: 0; }
 
 /* ── Cards ── */
 .stat-card { background: #fff; border-radius: 10px; padding: 1.25rem 1.5rem; border: 1px solid #e2e8f0; }

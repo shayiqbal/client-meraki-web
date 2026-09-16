@@ -18,17 +18,6 @@ function app() {
       deviceaddr: 'Device Addresses',
       activity: 'Activity Log',
     },
-    pageOverviews: {
-      dashboard: "Summary of the selected organization's MX networks and VPN exclusion rules, with shortcuts to common tasks.",
-      networks: 'Browse and search the organization’s MX networks, then open a network to manage its VPN exclusions.',
-      exclusions: 'View current split-tunnel exclusions, import proposed rules, review a dry run, and deploy approved changes.',
-      copy: 'Copy selected VPN exclusion rules from one source network to one or more destination networks.',
-      grouppolicies: 'Copy selected group policies from a source network to destination networks.',
-      compare: 'Compare VPN rules, SSIDs, and appliance settings across networks to identify differences.',
-      newnet: 'Create an MX network from a template and choose which configuration areas to copy.',
-      deviceaddr: 'Bulk-update device site addresses and Dashboard map markers within a network.',
-      activity: 'Review actions and results recorded during the current browser session.',
-    },
 
     // ── Org / Network state ───────────────────────────────────────────────────
     orgs: [],
