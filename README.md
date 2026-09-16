@@ -17,6 +17,13 @@ A browser-based management tool for Cisco Meraki MX networks. Run it locally or 
 | **New Network Wizard** | Create a new network cloned from a template in 6 guided steps |
 | **Activity Log** | Timestamped log of every action taken during your session |
 
+### Page overviews
+
+Each page shows a concise overview beneath its title, explaining the purpose of
+the current view. The overview updates as you navigate between the Dashboard,
+Networks, VPN Exclusions, Copy Rules, Group Policies, Compare Networks, New
+Network, Device Addresses, and Activity Log pages.
+
 ---
 
 ## Requirements
